@@ -1,4 +1,4 @@
-job "whoami" {
+job "auth-server" {
   datacenters = ["dc1"]
 
   type = "service"
@@ -15,17 +15,22 @@ job "whoami" {
     }
 
     service {
-      name = "whoami-server"
+      name = "auth-server"
       port = "http"
 
       tags = [
         "traefik.enable=true",
-        "traefik.http.routers.target.rule=Path(`/whoami`)",
-        "traefik.http.routers.target.middlewares=auth",
+        "traefik.http.routers.auth-server.rule=Path(`/login`)",
       ]
 
       connect {
         sidecar_service {
+          proxy {
+            upstreams {
+              destination_name = "whoami-server"
+              local_bind_port = 8034
+            }
+          }
         }
       }
 
@@ -41,8 +46,12 @@ job "whoami" {
       driver = "docker"
 
       config {
-        image = "traefik/whoami:latest"
+        image = "auth:local"
         ports = ["http"]
+      }
+
+      env {
+        WHOAMI_URL = "http://${NOMAD_UPSTREAM_ADDR_whoami_server}"
       }
 
     }
